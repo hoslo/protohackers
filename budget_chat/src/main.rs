@@ -62,8 +62,11 @@ async fn main() -> Result<()> {
             writer.flush().await.unwrap();
 
             let join_msg = format!("{} has entered the room\n", username);
-            writer.write_all(join_msg.as_bytes()).await.unwrap();
-            writer.flush().await.unwrap();
+            let msg = Message {
+                username: username.clone(),
+                message: join_msg,
+            };
+            tx.send(msg).unwrap();
 
             let mut line = String::new();
             loop {
