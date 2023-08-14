@@ -33,8 +33,8 @@ async fn main() -> Result<()> {
     let mut listener = socket.connect(addr).await.unwrap();
     let (reader, writer) = listener.split();
     let res = Request{
-        number: 9.0,
-        method: "is_prime".to_string(),
+        number: -4.0,
+        method: "isPrime".to_string(),
     };
     let res = serde_json::to_string(&res).unwrap();
     let mut writer = BufWriter::new(writer);

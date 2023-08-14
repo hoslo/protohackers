@@ -2,14 +2,20 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader, BufWriter, AsyncWriteExt};
 
-fn is_prime(i: f32) -> bool {
-    let mut j = 2.0;
-    while j < i {
-        if i % j == 0.0 {
+fn is_prime(n: f32) -> bool {
+    let n = n as u32;
+    if n <= 1 {
+        return false;
+    }
+
+    let sqrt_n = (n as f64).sqrt() as u32;
+
+    for i in 2..=sqrt_n {
+        if n % i == 0 {
             return false;
         }
-        j += 1.0;
     }
+
     true
 }
 
