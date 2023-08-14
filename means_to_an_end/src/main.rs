@@ -32,10 +32,10 @@ async fn main() -> Result<()> {
                             let mintime = BigEndian::read_i32(&buffer[1..5]);
                             let maxtime = BigEndian::read_i32(&buffer[5..9]);
                             println!("Q {} {}", mintime, maxtime);
-                            let filter_s: Vec<i32> = s
+                            let filter_s: Vec<i64> = s
                                 .iter()
                                 .filter(|p| p.timestamp >= mintime && p.timestamp <= maxtime)
-                                .map(|p| p.price)
+                                .map(|p| p.price as i64)
                                 .collect();
                             if filter_s.len() as i32 == 0 {
                                 let response = (0 as i32).to_be_bytes();
@@ -43,8 +43,8 @@ async fn main() -> Result<()> {
                                 writer.flush().await.unwrap();
                                 continue;
                             }
-                            let avg_price = filter_s.iter().sum::<i32>() / filter_s.len() as i32;
-                            let response = avg_price.to_be_bytes();
+                            let avg_price = filter_s.iter().sum::<i64>() / filter_s.len() as i64;
+                            let response = (avg_price as i32).to_be_bytes();
                             writer.write_all(&response).await.unwrap();
                             writer.flush().await.unwrap();
                         }
