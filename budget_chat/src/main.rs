@@ -81,9 +81,12 @@ async fn main() -> Result<()> {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
                         match result {
-                            Ok(_) => {}
+                            Ok(_) => {
+                                println!("Received message from {}:{}", username, line);
+                            }
                             Err(e) => {
                                 println!("Error: {:?}", e);
+                                break;
                             }
                         }
                         let msg = Message {
