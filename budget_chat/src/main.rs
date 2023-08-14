@@ -6,7 +6,7 @@ use std::{
 use anyhow::Result;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
-    sync::broadcast,
+    sync::broadcast, time::sleep,
 };
 
 #[derive(Clone, Debug)]
@@ -81,12 +81,23 @@ async fn main() -> Result<()> {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
                         match result {
-                            Ok(_) => {
-                                println!("Received message from {}:{}", username, line);
+                            Ok(0) => {
+                                println!("Client disconnected");
+                                let leave_msg = format!("* {} has left the room", username);
+                                let msg = Message {
+                                    username: username.clone(),
+                                    msg_type: MsgType::System,
+                                    message: leave_msg,
+                                };
+                                tx.send(msg).unwrap();
+                                users.lock().unwrap().remove(&username);
+                                sleep(tokio::time::Duration::from_secs(1)).await;
+                                break;
                             }
+                            Ok(_) => {}
                             Err(e) => {
                                 println!("Error: {:?}", e);
-                                break;
+                                return;
                             }
                         }
                         let msg = Message {
