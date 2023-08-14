@@ -91,7 +91,7 @@ async fn main() -> Result<()> {
                                 };
                                 tx.send(msg).unwrap();
                                 users.lock().unwrap().remove(&username);
-                                sleep(tokio::time::Duration::from_secs(1)).await;
+                                sleep(tokio::time::Duration::from_secs(2)).await;
                                 break;
                             }
                             Ok(_) => {}
