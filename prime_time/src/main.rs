@@ -2,18 +2,26 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, BufReader, BufWriter, AsyncWriteExt};
 
-fn is_prime(n: f32) -> bool {
-    let n = n as u32;
+fn is_prime(n: f64) -> bool {
+    let n = n as u64;
     if n <= 1 {
         return false;
     }
 
-    let sqrt_n = (n as f64).sqrt() as u32;
+    if n <= 3 {
+        return true;
+    }
 
-    for i in 2..=sqrt_n {
-        if n % i == 0 {
+    if n % 2 == 0 || n % 3 == 0 {
+        return false;
+    }
+
+    let mut i = 5;
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
             return false;
         }
+        i += 6;
     }
 
     true
@@ -21,7 +29,7 @@ fn is_prime(n: f32) -> bool {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Request {
-    number: f32,
+    number: f64,
     method: String,
 }
 

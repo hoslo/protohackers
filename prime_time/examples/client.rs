@@ -16,13 +16,13 @@ fn is_prime(i: f32) -> bool {
 
 #[derive(Serialize, Deserialize)]
 struct Request {
-    number: f32,
+    number: f64,
     method: String,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Response {
-    is_prime: bool,
+    prime: bool,
     method: String,
 }
 
@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
     let mut listener = socket.connect(addr).await.unwrap();
     let (reader, writer) = listener.split();
     let res = Request{
-        number: -4.0,
+        number: 42913841.0,
         method: "isPrime".to_string(),
     };
     let res = serde_json::to_string(&res).unwrap();
@@ -48,10 +48,10 @@ async fn main() -> Result<()> {
     let r: Result<Response, _> = serde_json::from_str(&buffer);
     match r {
         Ok(response) => {
-            println!("{}: {}", response.method, response.is_prime);
+            println!("{}: {}", response.method, response.prime);
         }
-        _ => {
-            println!("Error");
+        Err(e) => {
+            println!("Error: {:?}", e);
         }
     }
 
