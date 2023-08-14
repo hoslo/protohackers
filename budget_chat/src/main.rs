@@ -64,7 +64,7 @@ async fn main() -> Result<()> {
                 .map(|u| u.0.clone())
                 .collect::<Vec<String>>();
             let list_user_msg = format!("* The room contains: {}\n", other_users.join(", "));
-            println!("{}", list_user_msg);
+            println!("Sending message to {}:{}", username, list_user_msg);
             writer.write_all(list_user_msg.as_bytes()).await.unwrap();
             writer.flush().await.unwrap();
 
