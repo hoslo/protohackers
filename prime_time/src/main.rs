@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, BufReader, BufWriter, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter};
 
 fn is_prime(n: f64) -> bool {
     let n = n as u64;
@@ -58,12 +58,12 @@ async fn main() -> Result<()> {
                         println!("{:?}", r);
                         match r {
                             Ok(request) => {
-                                let res = Response{
+                                let res = Response {
                                     prime: is_prime(request.number),
                                     method: request.method,
                                 };
                                 if res.method != "isPrime".to_string() {
-                                    let res = Response{
+                                    let res = Response {
                                         prime: false,
                                         method: "isPrime".to_string(),
                                     };
@@ -72,10 +72,9 @@ async fn main() -> Result<()> {
                                     writer.write_all(b"\n").await.unwrap();
                                     writer.flush().await.unwrap();
                                 } else {
-                                    let res = serde_json::to_string(&res).unwrap();
-                                    writer.write_all(res.as_bytes()).await.unwrap();
-                                    writer.write_all(b"\n").await.unwrap();
+                                    writer.write_all(b"error").await.unwrap();
                                     writer.flush().await.unwrap();
+                                    return;
                                 }
                             }
                             _ => {
