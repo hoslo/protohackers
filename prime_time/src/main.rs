@@ -27,7 +27,7 @@ struct Request {
 
 #[derive(Serialize, Deserialize)]
 struct Response {
-    is_prime: bool,
+    prime: bool,
     method: String,
 }
 
@@ -51,12 +51,12 @@ async fn main() -> Result<()> {
                         match r {
                             Ok(request) => {
                                 let res = Response{
-                                    is_prime: is_prime(request.number),
+                                    prime: is_prime(request.number),
                                     method: request.method,
                                 };
                                 if res.method != "isPrime".to_string() {
                                     let res = Response{
-                                        is_prime: false,
+                                        prime: false,
                                         method: "isPrime".to_string(),
                                     };
                                     let res = serde_json::to_string(&res).unwrap();
@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
                             }
                             _ => {
                                 let res = Response{
-                                    is_prime: false,
+                                    prime: false,
                                     method: "isPrime".to_string(),
                                 };
                                 let res = serde_json::to_string(&res).unwrap();
