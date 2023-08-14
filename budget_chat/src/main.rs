@@ -10,9 +10,16 @@ use tokio::{
 };
 
 #[derive(Clone, Debug)]
+enum MsgType {
+    System,
+    User,
+}
+
+#[derive(Clone, Debug)]
 struct Message {
     username: String,
     message: String,
+    msg_type: MsgType,
 }
 
 #[tokio::main]
@@ -64,6 +71,7 @@ async fn main() -> Result<()> {
             let join_msg = format!("* {} has entered the room\n", username);
             let msg = Message {
                 username: username.clone(),
+                msg_type: MsgType::System,
                 message: join_msg,
             };
             tx.send(msg).unwrap();
@@ -81,6 +89,7 @@ async fn main() -> Result<()> {
                         }
                         let msg = Message {
                             username: username.clone(),
+                            msg_type: MsgType::User,
                             message: line.clone(),
                         };
                         tx.send(msg).unwrap();
@@ -92,8 +101,16 @@ async fn main() -> Result<()> {
                                 println!("Skipping message from self");
                                 continue;
                             }
-                            let msg = format!("[{}]: {}", msg.username, msg.message);
-                            writer.write_all(msg.as_bytes()).await.unwrap();
+                            let mut m = String::new();
+                            match msg.msg_type {
+                                MsgType::System => {
+                                    m = format!("* {}\n", msg.message);
+                                }
+                                MsgType::User => {
+                                    m = format!("{}: {}\n", msg.username, msg.message);
+                                }
+                            }
+                            writer.write_all(m.as_bytes()).await.unwrap();
                             writer.flush().await.unwrap();
                         }
                         Err(e) => {
