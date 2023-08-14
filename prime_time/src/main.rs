@@ -63,18 +63,14 @@ async fn main() -> Result<()> {
                                     method: request.method,
                                 };
                                 if res.method != "isPrime".to_string() {
-                                    let res = Response {
-                                        prime: false,
-                                        method: "isPrime".to_string(),
-                                    };
+                                    writer.write_all(b"error").await.unwrap();
+                                    writer.flush().await.unwrap();
+                                    return;
+                                } else {
                                     let res = serde_json::to_string(&res).unwrap();
                                     writer.write_all(res.as_bytes()).await.unwrap();
                                     writer.write_all(b"\n").await.unwrap();
                                     writer.flush().await.unwrap();
-                                } else {
-                                    writer.write_all(b"error").await.unwrap();
-                                    writer.flush().await.unwrap();
-                                    return;
                                 }
                             }
                             _ => {
