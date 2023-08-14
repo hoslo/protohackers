@@ -13,7 +13,7 @@ fn is_prime(i: f32) -> bool {
     true
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Request {
     number: f32,
     method: String,
@@ -41,6 +41,7 @@ async fn main() -> Result<()> {
                     Ok(0) => return,
                     Ok(_) => {
                         let r: Result<Request, _> = serde_json::from_str(&buffer);
+                        println!("{:?}", r);
                         match r {
                             Ok(request) => {
                                 let res = Response{
