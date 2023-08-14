@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use byteorder::{BigEndian, ByteOrder};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter};
@@ -13,7 +15,7 @@ async fn main() -> Result<()> {
     loop {
         let mut socket = listener.accept().await?.0;
         tokio::spawn(async move {
-            let mut s = vec![];
+            let mut s = HashMap::new();
             let (reader, writer) = socket.split();
             let mut reader = BufReader::new(reader);
             let mut writer = BufWriter::new(writer);
@@ -27,15 +29,20 @@ async fn main() -> Result<()> {
                             let timestamp = BigEndian::read_i32(&buffer[1..5]);
                             let price = BigEndian::read_i32(&buffer[5..9]);
                             println!("I {} {}", timestamp, price);
-                            s.push(Price { timestamp, price });
+                            let e = s.get(&timestamp);
+                            if e.is_none() {
+                                s.insert(timestamp, Price { timestamp, price });
+                            } else {
+                                return;
+                            }
                         } else if buffer[0] as char == 'Q' {
                             let mintime = BigEndian::read_i32(&buffer[1..5]);
                             let maxtime = BigEndian::read_i32(&buffer[5..9]);
                             println!("Q {} {}", mintime, maxtime);
                             let filter_s: Vec<i64> = s
                                 .iter()
-                                .filter(|p| p.timestamp >= mintime && p.timestamp <= maxtime)
-                                .map(|p| p.price as i64)
+                                .filter(|p| *(p.0) >= mintime && *(p.0) <= maxtime)
+                                .map(|p| *p.0 as i64)
                                 .collect();
                             if filter_s.len() as i32 == 0 {
                                 let response = (0 as i32).to_be_bytes();
