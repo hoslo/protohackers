@@ -81,10 +81,6 @@ async fn main() -> Result<()> {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
                         if result.unwrap() == 0 {
-                            let leave_msg = format!("*{} has left the room", username);
-                            writer.write_all(leave_msg.as_bytes()).await.unwrap();
-                            writer.flush().await.unwrap();
-                            users.lock().unwrap().remove(&username);
                             return
                         }
                         let msg = Message {
