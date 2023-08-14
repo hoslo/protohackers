@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
             writer.write_all(list_user_msg.as_bytes()).await.unwrap();
             writer.flush().await.unwrap();
 
-            let join_msg = format!("* {} has entered the room\n", username);
+            let join_msg = format!("* {} has entered the room", username);
             let msg = Message {
                 username: username.clone(),
                 msg_type: MsgType::System,
@@ -81,7 +81,7 @@ async fn main() -> Result<()> {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
                         if result.unwrap() == 0 {
-                            let leave_msg = format!("{} bob has left the room\n", username);
+                            let leave_msg = format!("{} bob has left the room", username);
                             writer.write_all(leave_msg.as_bytes()).await.unwrap();
                             writer.flush().await.unwrap();
                             users.lock().unwrap().remove(&username);
@@ -180,12 +180,19 @@ mod test {
             // send message
             writer.write_all("hello\n".as_bytes()).await.unwrap();
             writer.flush().await.unwrap();
-
-            // read message
-            let mut line = String::new();
-            reader.read_line(&mut line).await.unwrap();
-            assert_eq!(line, "[bob] hello\n");
         }
+
+        // read message
+        let mut line = String::new();
+        reader.read_line(&mut line).await.unwrap();
+        println!("line: {}", line);
+        assert_eq!(line, "* alice has entered the room\n");
+
+        // read message
+        let mut line = String::new();
+        reader.read_line(&mut line).await.unwrap();
+        println!("line: {}", line);
+        assert_eq!(line, "[alice] hello\n");
 
     }
 }
