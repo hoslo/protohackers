@@ -41,8 +41,8 @@ async fn main() -> Result<()> {
                             println!("Q {} {}", mintime, maxtime);
                             let filter_s: Vec<i64> = s
                                 .iter()
-                                .filter(|p| *(p.0) >= mintime && *(p.0) <= maxtime)
-                                .map(|p| *p.0 as i64)
+                                .filter(|p| p.1.timestamp >= mintime && p.1.timestamp <= maxtime)
+                                .map(|p| p.1.price as i64)
                                 .collect();
                             if filter_s.len() as i32 == 0 {
                                 let response = (0 as i32).to_be_bytes();
