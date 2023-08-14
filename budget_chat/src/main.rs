@@ -89,6 +89,7 @@ async fn main() -> Result<()> {
                     result = rx.recv() => match result {
                         Ok(msg) => {
                             if msg.username == username {
+                                println!("Skipping message from self");
                                 continue;
                             }
                             let msg = format!("[{}]: {}", msg.username, msg.message);
