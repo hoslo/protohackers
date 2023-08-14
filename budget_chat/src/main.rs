@@ -91,12 +91,12 @@ async fn main() -> Result<()> {
                                 };
                                 tx.send(msg).unwrap();
                                 users.lock().unwrap().remove(&username);
-                                return
+                                
                             }
                             Ok(_) => {}
                             Err(e) => {
                                 println!("Error: {:?}", e);
-                                return
+                                
                             }
                         }
                         let msg = Message {
@@ -128,7 +128,6 @@ async fn main() -> Result<()> {
                         }
                         Err(e) => {
                             println!("Error: {:?}", e);
-                            return
                         }
                     }
                 };
