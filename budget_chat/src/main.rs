@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
             writer.write_all(list_user_msg.as_bytes()).await.unwrap();
             writer.flush().await.unwrap();
 
-            let join_msg = format!("{} has entered the room\n", username);
+            let join_msg = format!("* {} has entered the room\n", username);
             let msg = Message {
                 username: username.clone(),
                 message: join_msg,
