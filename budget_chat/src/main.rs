@@ -110,7 +110,7 @@ async fn main() -> Result<()> {
                                     m = format!("[{}] {}\n", msg.username, msg.message);
                                 }
                             }
-                            println!("Sending message to {}: {}", username, m);
+                            println!("Sending message to {}:{}", username, m);
                             writer.write_all(m.as_bytes()).await.unwrap();
                             writer.flush().await.unwrap();
                         }
@@ -129,7 +129,6 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod test {
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
-
 
     #[tokio::test]
     async fn test() {
@@ -156,6 +155,37 @@ mod test {
         // send message
         writer.write_all("hello\n".as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
+
+        {
+            // join the chat
+            let mut socket = tokio::net::TcpStream::connect("127.0.0.1:8000").await.unwrap();
+            let (reader, writer) = socket.split();
+            let mut reader = tokio::io::BufReader::new(reader);
+            let mut writer = tokio::io::BufWriter::new(writer);
+            // read welcome message
+            let mut line = String::new();
+            reader.read_line(&mut line).await.unwrap();
+            assert_eq!(line, "Welcome to budgetchat! What shall I call you?\n");
+            println!("line: {}", line);
+            
+            // send username
+            writer.write_all("alice\n".as_bytes()).await.unwrap();
+            writer.flush().await.unwrap();
+
+            // read list of users
+            let mut line = String::new();
+            reader.read_line(&mut line).await.unwrap();
+            assert_eq!(line, "* The room contains: bob\n");
+
+            // send message
+            writer.write_all("hello\n".as_bytes()).await.unwrap();
+            writer.flush().await.unwrap();
+
+            // read message
+            let mut line = String::new();
+            reader.read_line(&mut line).await.unwrap();
+            assert_eq!(line, "[bob] hello\n");
+        }
 
     }
 }
