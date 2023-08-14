@@ -92,6 +92,14 @@ async fn main() -> Result<()> {
                     }
                     Err(e) => {
                         eprintln!("Error: {}", e);
+                        let res = Response{
+                            prime: false,
+                            method: "isPrime".to_string(),
+                        };
+                        let res = serde_json::to_string(&res).unwrap();
+                        writer.write_all(res.as_bytes()).await.unwrap();
+                        writer.write_all(b"\n").await.unwrap();
+                        writer.flush().await.unwrap();
                         return;
                     }
                 }
