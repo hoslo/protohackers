@@ -51,6 +51,7 @@ async fn main() -> Result<()> {
                     }
                     Err(e) => {
                         println!("Error: {:?}", e);
+                        return
                     }
                 }
             }
