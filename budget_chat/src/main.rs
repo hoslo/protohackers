@@ -80,9 +80,24 @@ async fn main() -> Result<()> {
             loop {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
-                        if result.unwrap() == 0 {
-                            println!("{} has left the room", username);
-                            return
+                        match result {
+                            Ok(0) => {
+                                println!("Client disconnected");
+                                let leave_msg = format!("* {} has left the room", username);
+                                let msg = Message {
+                                    username: username.clone(),
+                                    msg_type: MsgType::System,
+                                    message: leave_msg,
+                                };
+                                tx.send(msg).unwrap();
+                                users.lock().unwrap().remove(&username);
+                                return
+                            }
+                            Ok(_) => {}
+                            Err(e) => {
+                                println!("Error: {:?}", e);
+                                return
+                            }
                         }
                         let msg = Message {
                             username: username.clone(),
