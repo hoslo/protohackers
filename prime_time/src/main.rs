@@ -48,15 +48,26 @@ async fn main() -> Result<()> {
                                     is_prime: is_prime(request.number),
                                     method: request.method,
                                 };
-                                let res = serde_json::to_string(&res).unwrap();
-                                writer.write_all(res.as_bytes()).await.unwrap();
-                                writer.write_all(b"\n").await.unwrap();
-                                writer.flush().await.unwrap();
+                                if res.method != "isPrime".to_string() {
+                                    let res = Response{
+                                        is_prime: false,
+                                        method: "isPrime".to_string(),
+                                    };
+                                    let res = serde_json::to_string(&res).unwrap();
+                                    writer.write_all(res.as_bytes()).await.unwrap();
+                                    writer.write_all(b"\n").await.unwrap();
+                                    writer.flush().await.unwrap();
+                                } else {
+                                    let res = serde_json::to_string(&res).unwrap();
+                                    writer.write_all(res.as_bytes()).await.unwrap();
+                                    writer.write_all(b"\n").await.unwrap();
+                                    writer.flush().await.unwrap();
+                                }
                             }
                             _ => {
                                 let res = Response{
                                     is_prime: false,
-                                    method: "is_prime".to_string(),
+                                    method: "isPrime".to_string(),
                                 };
                                 let res = serde_json::to_string(&res).unwrap();
                                 writer.write_all(res.as_bytes()).await.unwrap();
