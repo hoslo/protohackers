@@ -110,6 +110,7 @@ async fn main() -> Result<()> {
                                     m = format!("{}: {}\n", msg.username, msg.message);
                                 }
                             }
+                            println!("Sending message to {}: {}", username, m);
                             writer.write_all(m.as_bytes()).await.unwrap();
                             writer.flush().await.unwrap();
                         }
