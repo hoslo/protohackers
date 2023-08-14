@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
                                     m = format!("{}\n", msg.message);
                                 }
                                 MsgType::User => {
-                                    m = format!("[{}]: {}\n", msg.username, msg.message);
+                                    m = format!("[{}] {}\n", msg.username, msg.message);
                                 }
                             }
                             println!("Sending message to {}: {}", username, m);
