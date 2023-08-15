@@ -61,7 +61,8 @@ async fn handle_joined(
     loop {
         select! {
             item = framed.next() => {
-                println!("{} --> {:?}", addr, item);
+                #[cfg(debug_assertions)]
+                println!("{addr} --> {item:?}");
 
                 let message = item.ok_or(anyhow!("framed Client disconnected"))??;
                 let message = message;
