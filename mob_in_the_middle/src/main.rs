@@ -1,11 +1,11 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
+use fancy_regex::Regex;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use fancy_regex::Regex;
 use tokio::{net::TcpStream, select};
-use tokio_util::codec::{Framed, LinesCodec, FramedRead, FramedWrite};
+use tokio_util::codec::{Framed, LinesCodec};
 
 lazy_static! {
     static ref REGEX_BOGUSCOIN: Regex = Regex::new(r"(?<= |^)7[a-zA-Z0-9]{25,34}(?= |$)").unwrap();
@@ -19,55 +19,41 @@ fn replace_boguscoin(message: String) -> String {
         .to_string()
 }
 
-async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()> {
-    let (client_read, client_write) = client_stream.into_split();
-    let mut client_read = FramedRead::new(client_read, LinesCodec::new());
-    let mut client_write = FramedWrite::new(client_write, LinesCodec::new());
+async fn handle_client(socket: TcpStream, addr: SocketAddr) -> Result<()> {
+    let up_socket = TcpStream::connect("chat.protohackers.com:16963").await?;
 
-    let server_stream = TcpStream::connect("chat.protohackers.com:16963").await?;
-    let (server_read, server_write) = server_stream.into_split();
-    let mut server_read = FramedRead::new(server_read, LinesCodec::new());
-    let mut server_write = FramedWrite::new(server_write, LinesCodec::new());
+    let mut framed = Framed::new(socket, LinesCodec::new());
 
-    let client_task = tokio::spawn(async move {
-        while let Some(message) = client_read.next().await {
-            match message {
-                Ok(message) => {
-                    #[cfg(debug_assertions)]
-                    println!("{addr} --> {message}");
+    let mut up_framed = Framed::new(up_socket, LinesCodec::new());
 
-                    server_write.send(replace_boguscoin(message)).await?;
+    loop {
+        select! {
+            line = framed.next() =>  {
+                match line {
+                    Some(line) => {
+                        let line = line?;
+                        let line = replace_boguscoin(line);
+                        #[cfg(debug_assertions)]
+                        println!("{addr} --> {line}");
+                        up_framed.send(line).await?;
+                    }
+                    None => {}
                 }
-                Err(err) => {
-                    // TODO: Abort server task
-                    return Err(err);
+            }
+            line = up_framed.next() => {
+                match line {
+                    Some(line) => {
+                        let line = line?;
+                        let line = replace_boguscoin(line);
+                        #[cfg(debug_assertions)]
+                        println!("{addr} <-- {line}");
+                        framed.send(line).await?;
+                    }
+                    None => {}
                 }
             }
         }
-
-        Ok(())
-    });
-
-    let server_task = tokio::spawn(async move {
-        while let Some(message) = server_read.next().await {
-            match message {
-                Ok(message) => {
-                    #[cfg(debug_assertions)]
-                    println!("{addr} <-- {message}");
-
-                    client_write.send(replace_boguscoin(message)).await?;
-                }
-                Err(err) => {
-                    // TODO: Abort client task
-                    return Err(err);
-                }
-            }
-        }
-
-        Ok(())
-    });
-
-    Ok(())
+    }
 }
 
 #[tokio::main]
