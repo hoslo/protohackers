@@ -22,13 +22,13 @@ fn hack_boguscoin_message(message: &String) -> String {
 
 async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()> {
     let (client_read, client_write) = client_stream.into_split();
-    let mut client_read = FramedRead::new(client_read, LinesCodec::new());
-    let mut client_write = FramedWrite::new(client_write, LinesCodec::new());
+    let mut client_read = FramedRead::new(client_read, StrictLinesCodec::new());
+    let mut client_write = FramedWrite::new(client_write, StrictLinesCodec::new());
 
     let server_stream = TcpStream::connect("chat.protohackers.com:16963").await?;
     let (server_read, server_write) = server_stream.into_split();
-    let mut server_read = FramedRead::new(server_read, LinesCodec::new());
-    let mut server_write = FramedWrite::new(server_write, LinesCodec::new());
+    let mut server_read = FramedRead::new(server_read, StrictLinesCodec::new());
+    let mut server_write = FramedWrite::new(server_write, StrictLinesCodec::new());
 
     tokio::spawn(async move {
         while let Some(message) = client_read.next().await {
