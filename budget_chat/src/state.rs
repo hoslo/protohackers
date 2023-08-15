@@ -50,7 +50,7 @@ impl State {
 type ClientName = String;
 type Message = String;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {
     NewUser(ClientName),
     NewMessage(ClientName, Message),

@@ -73,6 +73,7 @@ async fn handle_joined(
                 }
             }
             event = receiver.recv() => {
+                println!("event: {:?}", event);
                 let event = event.ok_or(anyhow!("event Client disconnected"))?;
 
                 match event {
