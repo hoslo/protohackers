@@ -92,7 +92,7 @@ async fn handle_joined(
                         framed.send(join_msg).await?;
                     }
                     Event::NewMessage(name, message) => {
-                        let msg = format!("[{}]: {}", name, message);
+                        let msg = format!("[{}] {}", name, message);
                         println!("{} <-- {}", addr, msg);
                         framed.send(msg).await?;
                     }
