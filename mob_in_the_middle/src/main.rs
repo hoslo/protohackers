@@ -21,54 +21,46 @@ fn hack_boguscoin_message(message: &String) -> String {
 }
 
 async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()> {
-    let (client_read, client_write) = client_stream.into_split();
-    let mut client_read = FramedRead::new(client_read, StrictLinesCodec::new());
-    let mut client_write = FramedWrite::new(client_write, StrictLinesCodec::new());
+    let mut client_framed = Framed::new(client_stream, StrictLinesCodec::new());
 
     let server_stream = TcpStream::connect("chat.protohackers.com:16963").await?;
-    let (server_read, server_write) = server_stream.into_split();
-    let mut server_read = FramedRead::new(server_read, StrictLinesCodec::new());
-    let mut server_write = FramedWrite::new(server_write, StrictLinesCodec::new());
+    let mut server_framed = Framed::new(server_stream, StrictLinesCodec::new());
 
-    let client_task = tokio::spawn(async move {
-        while let Some(message) = client_read.next().await {
-            match message {
-                Ok(message) => {
-                    #[cfg(debug_assertions)]
-                    println!("{addr} --> {message}");
-
-                    server_write.send(hack_boguscoin_message(&message)).await?;
+    loop {
+        select! {
+            client_message = client_framed.next() => {
+                match client_message {
+                    Some(Ok(message)) => {
+                        let message = hack_boguscoin_message(&message);
+                        println!("{}: {}", addr, message);
+                        server_framed.send(message).await?;
+                    },
+                    Some(Err(e)) => {
+                        println!("{}: error reading from client: {}", addr, e);
+                        return Err(e.into());
+                    },
+                    None => {
+                        println!("{}: client disconnected", addr);
+                    }
                 }
-                Err(err) => {
-                    // TODO: Abort server task
-                    return Err(err);
-                }
-            }
-        }
-
-        Ok(())
-    });
-
-    let server_task = tokio::spawn(async move {
-        while let Some(message) = server_read.next().await {
-            match message {
-                Ok(message) => {
-                    #[cfg(debug_assertions)]
-                    println!("{addr} <-- {message}");
-
-                    client_write.send(hack_boguscoin_message(&message)).await?;
-                }
-                Err(err) => {
-                    // TODO: Abort client task
-                    return Err(err);
+            },
+            server_message = server_framed.next() => {
+                match server_message {
+                    Some(Ok(message)) => {
+                        println!("{}: {}", addr, message);
+                        client_framed.send(message).await?;
+                    },
+                    Some(Err(e)) => {
+                        println!("{}: error reading from server: {}", addr, e);
+                        return Err(e.into());
+                    },
+                    None => {
+                        println!("{}: server disconnected", addr);
+                    }
                 }
             }
         }
-
-        Ok(())
-    });
-
-    Ok(())
+    }
 }
 
 #[tokio::main]
