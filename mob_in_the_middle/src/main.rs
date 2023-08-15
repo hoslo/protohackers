@@ -31,11 +31,18 @@ async fn handle_client(socket: TcpStream, addr: SocketAddr) -> Result<()> {
             line = framed.next() =>  {
                 match line {
                     Some(line) => {
-                        let line = line?;
-                        let line = replace_boguscoin(line);
-                        #[cfg(debug_assertions)]
-                        println!("{addr} --> {line}");
-                        up_framed.send(line).await?;
+                        match line {
+                            Ok(message) => {
+                                let message = replace_boguscoin(message);
+                                #[cfg(debug_assertions)]
+                                println!("{addr} --> {message}");
+                                up_framed.send(message).await?;
+                            }
+                            Err(e) => {
+                                return Err(e.into());
+                            }
+                        }
+                 
                     }
                     None => {}
                 }
@@ -43,11 +50,17 @@ async fn handle_client(socket: TcpStream, addr: SocketAddr) -> Result<()> {
             line = up_framed.next() => {
                 match line {
                     Some(line) => {
-                        let line = line?;
-                        let line = replace_boguscoin(line);
-                        #[cfg(debug_assertions)]
-                        println!("{addr} <-- {line}");
-                        framed.send(line).await?;
+                        match line {
+                            Ok(message) => {
+                                let message = replace_boguscoin(message);
+                                #[cfg(debug_assertions)]
+                                println!("{addr} --> {message}");
+                                framed.send(message).await?;
+                            }
+                            Err(e) => {
+                                return Err(e.into());
+                            }
+                        }
                     }
                     None => {}
                 }
