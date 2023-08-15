@@ -1,9 +1,11 @@
+use std::net::SocketAddr;
+
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use fancy_regex::Regex;
 use tokio::{net::TcpStream, select};
-use tokio_util::codec::{Framed, LinesCodec};
+use tokio_util::codec::{Framed, LinesCodec, FramedRead, FramedWrite};
 
 lazy_static! {
     static ref REGEX_BOGUSCOIN: Regex = Regex::new(r"(?<= |^)7[a-zA-Z0-9]{25,34}(?= |$)").unwrap();
@@ -17,29 +19,55 @@ fn replace_boguscoin(message: String) -> String {
         .to_string()
 }
 
-async fn handle_client(socket: tokio::net::TcpStream) -> Result<()> {
-    let up_socket = TcpStream::connect("chat.protohackers.com:16963").await?;
+async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()> {
+    let (client_read, client_write) = client_stream.into_split();
+    let mut client_read = FramedRead::new(client_read, LinesCodec::new());
+    let mut client_write = FramedWrite::new(client_write, LinesCodec::new());
 
-    let mut framed = Framed::new(socket, LinesCodec::new());
+    let server_stream = TcpStream::connect("chat.protohackers.com:16963").await?;
+    let (server_read, server_write) = server_stream.into_split();
+    let mut server_read = FramedRead::new(server_read, LinesCodec::new());
+    let mut server_write = FramedWrite::new(server_write, LinesCodec::new());
 
-    let mut up_framed = Framed::new(up_socket, LinesCodec::new());
+    let client_task = tokio::spawn(async move {
+        while let Some(message) = client_read.next().await {
+            match message {
+                Ok(message) => {
+                    #[cfg(debug_assertions)]
+                    println!("{addr} --> {message}");
 
-    loop {
-        select! {
-            line = framed.next() =>  {
-                let message = line.ok_or(anyhow::Error::msg("Got EOF"))??;
-                let message = replace_boguscoin(message);
-                println!("Got down message: {}", message);
-                up_framed.send(message).await?;
-            }
-            line = up_framed.next() => {
-                let message = line.ok_or(anyhow::Error::msg("Got EOF"))??;
-                let message = replace_boguscoin(message);
-                println!("Got up message: {}", message);
-                framed.send(message).await?;
+                    server_write.send(replace_boguscoin(message)).await?;
+                }
+                Err(err) => {
+                    // TODO: Abort server task
+                    return Err(err);
+                }
             }
         }
-    }
+
+        Ok(())
+    });
+
+    let server_task = tokio::spawn(async move {
+        while let Some(message) = server_read.next().await {
+            match message {
+                Ok(message) => {
+                    #[cfg(debug_assertions)]
+                    println!("{addr} <-- {message}");
+
+                    client_write.send(replace_boguscoin(message)).await?;
+                }
+                Err(err) => {
+                    // TODO: Abort client task
+                    return Err(err);
+                }
+            }
+        }
+
+        Ok(())
+    });
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -48,9 +76,9 @@ async fn main() -> Result<()> {
     loop {
         let socket = listener.accept().await?.0;
         socket.set_nodelay(true)?;
-
+        let addr = socket.peer_addr()?;
         tokio::spawn(async move {
-            if let Err(e) = handle_client(socket).await {
+            if let Err(e) = handle_client(socket, addr).await {
                 println!("an error occured; error = {:?}", e);
             }
         });
