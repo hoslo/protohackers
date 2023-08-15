@@ -29,10 +29,13 @@ async fn handle_client(socket: tokio::net::TcpStream) -> Result<()> {
             line = framed.next() =>  {
                 let message = line.ok_or(anyhow::Error::msg("Got EOF"))??;
                 let message = replace_boguscoin(message);
+                println!("Got down message: {}", message);
                 up_framed.send(message).await?;
             }
             line = up_framed.next() => {
                 let message = line.ok_or(anyhow::Error::msg("Got EOF"))??;
+                let message = replace_boguscoin(message);
+                println!("Got up message: {}", message);
                 framed.send(message).await?;
             }
         }
