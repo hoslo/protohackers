@@ -63,7 +63,7 @@ async fn handle_joined(
             item = framed.next() => {
                 println!("{} --> {:?}", addr, item);
 
-                let message = item.ok_or(anyhow!("Client disconnected"))??;
+                let message = item.ok_or(anyhow!("framed Client disconnected"))??;
                 let message = message;
 
                 {
@@ -72,7 +72,7 @@ async fn handle_joined(
                 }
             }
             event = receiver.recv() => {
-                let event = event.ok_or(anyhow!("Client disconnected"))?;
+                let event = event.ok_or(anyhow!("event Client disconnected"))?;
 
                 match event {
                     Event::NewUser(name) => {
