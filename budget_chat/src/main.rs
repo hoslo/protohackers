@@ -22,13 +22,22 @@ async fn handle_client(
         .send("Welcome to budgetchat! What shall I call you?")
         .await?;
 
-    let name = framed
-        .next()
-        .await
-        .ok_or(anyhow!("Client disconnected"))??;
+    let name = framed.next().await.ok_or(anyhow::Error::msg("Got EOF"))??;
 
-    if name.is_empty() && name.chars().all(|c| c.is_ascii_alphabetic()) {
-        return Err(anyhow!("Invalid username"));
+    if name.is_empty() {
+        framed.send(format!("Your name cannot be empty")).await?;
+
+        return Err(anyhow::Error::msg("Illegal empty name"));
+    } else if !name.chars().all(|char| {
+        ('a'..='z').contains(&char) || ('A'..='Z').contains(&char) || ('0'..='9').contains(&char)
+    }) {
+        framed
+            .send(format!(
+                "Your name can only have alphanumeric characters (uppercase, lowercase, digits)"
+            ))
+            .await?;
+
+        return Err(anyhow::Error::msg("Illegal characters in name"));
     }
 
     let online = {
