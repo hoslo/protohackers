@@ -4,5 +4,6 @@ members = [
     "smoke_test",
     "prime_time",
     "means_to_an_end",
-    "budget_chat"
+    "budget_chat",
+    "unusual_database_program"
 ]
