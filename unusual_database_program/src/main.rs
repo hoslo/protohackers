@@ -43,7 +43,7 @@ const VERSION_VALUE: &[u8] =
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let socket = UdpSocket::bind("0.0.0.0:800").await?;
+    let socket = UdpSocket::bind("0.0.0.0:8000").await?;
     let mut state = HashMap::new();
     loop {
         let Some(Request { from, key, value }) = read_request_from_udp(&socket).await? else {
