@@ -1,15 +1,15 @@
-use std::{sync::Arc, collections::HashMap, clone};
+use std::collections::HashMap;
 use anyhow::{Result, bail, Ok};
 
-use tokio::sync::mpsc::{Sender, Receiver};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 #[derive(Debug, Default)]
 pub struct State {
-    clients: HashMap<String, Sender<Event>>
+    clients: HashMap<String, UnboundedSender<Event>>
 }
 
 impl State {
-    pub fn add_client(&mut self, name: ClientName) -> Result<Receiver<Event>> {
+    pub fn add_client(&mut self, name: ClientName) -> Result<UnboundedReceiver<Event>> {
         if self.clients.contains_key(&name) {
             bail!("* The username {} is already taken\n", name);
         }
@@ -18,7 +18,7 @@ impl State {
             let _ = sender.send(event.clone());
         }
 
-        let (sender, receiver) = tokio::sync::mpsc::channel(32);
+        let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
         self.clients.insert(name, sender);
         Ok(receiver)
     }

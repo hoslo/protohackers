@@ -2,7 +2,7 @@ mod state;
 
 use std::{net::SocketAddr, sync::Arc};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use state::State;
 use tokio::sync::Mutex;
