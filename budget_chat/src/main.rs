@@ -64,7 +64,7 @@ async fn handle_joined(
                 #[cfg(debug_assertions)]
                 println!("{addr} --> {item:?}");
 
-                let message = item.ok_or(anyhow!("framed Client disconnected"))??;
+                let message = item.ok_or(anyhow::Error::msg("Got EOF"))??;
                 let message = message;
 
                 {
@@ -74,7 +74,7 @@ async fn handle_joined(
             }
             event = receiver.recv() => {
                 println!("event: {:?}", event);
-                let event = event.ok_or(anyhow!("event Client disconnected"))?;
+                let event = event.ok_or(anyhow::Error::msg("Somohow all senders dropped?"))?;
 
                 match event {
                     Event::NewUser(name) => {
