@@ -105,6 +105,7 @@ async fn main() -> Result<()> {
     loop {
         let socket = listener.accept().await?.0;
         let addr = socket.peer_addr()?;
+        socket.set_nodelay(true)?;
         let state = state.clone();
         tokio::spawn(async move {
             if let Err(e) = handle_client(socket, addr, state).await {
