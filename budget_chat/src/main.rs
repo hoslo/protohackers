@@ -126,7 +126,8 @@ async fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+    use anyhow::Error;
+    use tokio::{io::{AsyncBufReadExt, AsyncWriteExt}, select};
 
     #[tokio::test]
     async fn test() {
@@ -195,5 +196,19 @@ mod test {
         reader.read_line(&mut line).await.unwrap();
         println!("line: {}", line);
         assert_eq!(line, "[alice] hello\n");
+    }
+
+    #[test]
+    fn test1() {
+        let msg = test2();
+        println!("msg: {:?}", msg);
+    }
+
+    #[test]
+    fn test2() -> anyhow::Result<()> {
+        let item: Option<Result<String, Error>> = None;
+        let message = item.ok_or(anyhow::Error::msg("Got EOF"))??;
+        println!("333 message: {}", 1);
+        Ok(())
     }
 }
