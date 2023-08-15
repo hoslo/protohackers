@@ -1,142 +1,116 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+mod state;
 
-use anyhow::Result;
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader, BufWriter},
-    sync::broadcast, time::sleep,
-};
+use std::{net::SocketAddr, sync::Arc};
 
-#[derive(Clone, Debug)]
-enum MsgType {
-    System,
-    User,
+use anyhow::{anyhow, Result};
+use futures::{SinkExt, StreamExt};
+use state::State;
+use tokio::sync::Mutex;
+use tokio::{net::TcpStream, select};
+use tokio_util::codec::{Framed, LinesCodec};
+
+use crate::state::Event;
+
+async fn handle_client(
+    stream: TcpStream,
+    addr: SocketAddr,
+    state: Arc<Mutex<State>>,
+) -> Result<()> {
+    let mut framed = Framed::new(stream, LinesCodec::new());
+
+    framed
+        .send("Welcome to budgetchat! What shall I call you?")
+        .await?;
+
+    let name = framed
+        .next()
+        .await
+        .ok_or(anyhow!("Client disconnected"))??;
+
+    if name.is_empty() && name.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Err(anyhow!("Invalid username"));
+    }
+
+    let online = {
+        let state = state.lock().await;
+        state.get_present_names().join(", ")
+    };
+
+    framed
+        .send(format!("* The room contains: {}", online))
+        .await?;
+
+    let result = handle_joined(framed, addr, name.clone(), state.clone()).await;
+
+    {
+        let mut state = state.lock().await;
+        state.remove_client(name);
+    }
+
+    result
 }
 
-#[derive(Clone, Debug)]
-struct Message {
-    username: String,
-    message: String,
-    msg_type: MsgType,
+async fn handle_joined(
+    mut framed: Framed<TcpStream, LinesCodec>,
+    addr: SocketAddr,
+    name: String,
+    state: Arc<Mutex<State>>,
+) -> Result<()> {
+    let mut receiver = state.lock().await.add_client(name.clone())?;
+
+    loop {
+        select! {
+            item = framed.next() => {
+                println!("{} --> {:?}", addr, item);
+
+                let message = item.ok_or(anyhow!("Client disconnected"))??;
+                let message = message;
+
+                {
+                    let state = state.lock().await;
+                    state.boardcast_message(name.clone(), message);
+                }
+            }
+            event = receiver.recv() => {
+                let event = event.ok_or(anyhow!("Client disconnected"))?;
+
+                match event {
+                    Event::NewUser(name) => {
+                        let join_msg = format!("* {} has entered the room", name);
+                        println!("{} <-- {}", addr, join_msg);
+                        framed.send(join_msg).await?;
+                    }
+                    Event::NewMessage(name, message) => {
+                        let msg = format!("[{}]: {}", name, message);
+                        println!("{} <-- {}", addr, msg);
+                        framed.send(msg).await?;
+                    }
+                    Event::UserLeft(name) => {
+                        let left_msg = format!("* {} has left the room", name);
+                        println!("{} <-- {}", addr, left_msg);
+                        framed.send(left_msg).await?;
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await?;
-    let (tx, _) = broadcast::channel(32);
-    let users = Arc::new(Mutex::new(HashMap::new()));
+    let state = Arc::new(Mutex::new(State::default()));
     loop {
-        let mut socket = listener.accept().await?.0;
-        let tx = tx.clone();
-        let mut rx = tx.subscribe();
-        let users = users.clone();
+        let socket = listener.accept().await?.0;
+        let addr = socket.peer_addr()?;
+        let state = state.clone();
         tokio::spawn(async move {
-            let (reader, writer) = socket.split();
-            let mut reader = BufReader::new(reader);
-            let mut writer = BufWriter::new(writer);
-
-            println!("New client connected");
-            let welcome = "Welcome to budgetchat! What shall I call you?\n".to_string();
-            writer.write_all(welcome.as_bytes()).await.unwrap();
-            writer.flush().await.unwrap();
-
-            let mut username = String::new();
-            reader.read_line(&mut username).await.unwrap();
-            let username = username.trim().to_string();
-            if username.len() == 0 {
-                return;
-            }
-            println!("{} has joined the room", username);
-            if users.lock().unwrap().contains_key(&username) {
-                let err_msg = format!("* The username {} is already taken\n", username);
-                writer.write_all(err_msg.as_bytes()).await.unwrap();
-                writer.flush().await.unwrap();
-                return;
-            }
-            users.lock().unwrap().insert(username.clone(), true);
-            let other_users = users
-                .lock()
-                .unwrap()
-                .iter()
-                .filter(|u| u.0 != &username)
-                .map(|u| u.0.clone())
-                .collect::<Vec<String>>();
-            let list_user_msg = format!("* The room contains: {}\n", other_users.join(", "));
-            println!("Sending message to {}:{}", username, list_user_msg);
-            writer.write_all(list_user_msg.as_bytes()).await.unwrap();
-            writer.flush().await.unwrap();
-
-            let join_msg = format!("* {} has entered the room", username);
-            let msg = Message {
-                username: username.clone(),
-                msg_type: MsgType::System,
-                message: join_msg,
-            };
-            tx.send(msg).unwrap();
-
-            let mut line = String::new();
-            loop {
-                tokio::select! {
-                    result = reader.read_line(&mut line) => {
-                        match result {
-                            Ok(0) => {
-                                println!("Client disconnected");
-                                let leave_msg = format!("* {} has left the room", username);
-                                let msg = Message {
-                                    username: username.clone(),
-                                    msg_type: MsgType::System,
-                                    message: leave_msg,
-                                };
-                                tx.send(msg).unwrap();
-                                users.lock().unwrap().remove(&username);
-                                sleep(tokio::time::Duration::from_secs(2)).await;
-                                break;
-                            }
-                            Ok(_) => {}
-                            Err(e) => {
-                                println!("Error: {:?}", e);
-                                return;
-                            }
-                        }
-                        let msg = Message {
-                            username: username.clone(),
-                            msg_type: MsgType::User,
-                            message: line.clone(),
-                        };
-                        tx.send(msg).unwrap();
-                        line.clear();
-                    }
-                    result = rx.recv() => match result {
-                        Ok(msg) => {
-                            if msg.username == username {
-                                println!("Skipping message from self");
-                                continue;
-                            }
-                            let mut m = String::new();
-                            match msg.msg_type {
-                                MsgType::System => {
-                                    m = format!("{}\n", msg.message);
-                                }
-                                MsgType::User => {
-                                    m = format!("[{}] {}\n", msg.username, msg.message);
-                                }
-                            }
-                            println!("Sending message to {}:{}", username, m);
-                            writer.write_all(m.as_bytes()).await.unwrap();
-                            writer.flush().await.unwrap();
-                        }
-                        Err(e) => {
-                            println!("Error: {:?}", e);
-                        }
-                    }
-                };
+            if let Err(e) = handle_client(socket, addr, state).await {
+                println!("an error occured; error = {:?}", e);
             }
         });
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -145,7 +119,9 @@ mod test {
     #[tokio::test]
     async fn test() {
         // join the chat
-        let mut socket = tokio::net::TcpStream::connect("127.0.0.1:8000").await.unwrap();
+        let mut socket = tokio::net::TcpStream::connect("127.0.0.1:8000")
+            .await
+            .unwrap();
         let (reader, writer) = socket.split();
         let mut reader = tokio::io::BufReader::new(reader);
         let mut writer = tokio::io::BufWriter::new(writer);
@@ -154,7 +130,7 @@ mod test {
         reader.read_line(&mut line).await.unwrap();
         assert_eq!(line, "Welcome to budgetchat! What shall I call you?\n");
         println!("line: {}", line);
-        
+
         // send username
         writer.write_all("bob\n".as_bytes()).await.unwrap();
         writer.flush().await.unwrap();
@@ -170,7 +146,9 @@ mod test {
 
         {
             // join the chat
-            let mut socket = tokio::net::TcpStream::connect("127.0.0.1:8000").await.unwrap();
+            let mut socket = tokio::net::TcpStream::connect("127.0.0.1:8000")
+                .await
+                .unwrap();
             let (reader, writer) = socket.split();
             let mut reader = tokio::io::BufReader::new(reader);
             let mut writer = tokio::io::BufWriter::new(writer);
@@ -179,7 +157,7 @@ mod test {
             reader.read_line(&mut line).await.unwrap();
             assert_eq!(line, "Welcome to budgetchat! What shall I call you?\n");
             println!("line: {}", line);
-            
+
             // send username
             writer.write_all("alice\n".as_bytes()).await.unwrap();
             writer.flush().await.unwrap();
@@ -205,6 +183,5 @@ mod test {
         reader.read_line(&mut line).await.unwrap();
         println!("line: {}", line);
         assert_eq!(line, "[alice] hello\n");
-
     }
 }

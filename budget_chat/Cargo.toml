@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.31.0", features = ["full"] }
 anyhow = { version = "1.0.0", feature = ["backtrace"] }
+tokio-util = {version = "0.7.8", features = ["codec"]}
+futures = "0.3.28"
