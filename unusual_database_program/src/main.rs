@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         let Some(Request { from, key, value }) = read_request_from_udp(&socket).await? else {
             continue;
         };
-        println!("{}: {:?} {:?}", from, key, value.as_deref());
+        println!("{}: {:?} {:?}", from, String::from_utf8(key.clone()), value.as_deref());
         match value {
             Some(_) if key == VERSION_KEY => {
                 continue;
