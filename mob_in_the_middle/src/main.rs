@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use regex::Regex;
+use fancy_regex::Regex;
 use tokio::{net::TcpStream, select};
 use tokio_util::codec::{Framed, LinesCodec};
 
