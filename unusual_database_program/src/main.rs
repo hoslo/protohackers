@@ -27,12 +27,9 @@ async fn read_request_from_udp(socket: &UdpSocket) -> Result<Option<Request>> {
     }))
 }
 
-async fn write_request_to_udp(socket: &UdpSocket, request: &Request) -> Result<()> {
-    let message = match &request.value {
-        Some(value) => format!("{}={}", String::from_utf8_lossy(&request.key), String::from_utf8_lossy(&value)),
-        None => String::from_utf8_lossy(&request.key).to_string(),
-    };
-    socket.send_to(message.as_bytes(), request.from).await?;
+async fn write_request_to_udp(socket: &UdpSocket, from: SocketAddr, key: &[u8], value: &[u8]) -> Result<()> {
+    let message = format!("{}={}", String::from_utf8(key.to_owned())?, String::from_utf8(value.to_owned())?);
+    socket.send_to(message.as_bytes(), from).await?;
     Ok(())
 }
 
@@ -62,20 +59,11 @@ async fn main() -> Result<()> {
                 state.insert(key, value);
             }
             None if key == VERSION_KEY => {
-                let request = Request {
-                    from,
-                    key: VERSION_KEY.to_owned(),
-                    value: Some(VERSION_VALUE.to_owned()),
-                };
-                write_request_to_udp(&socket, &request).await?;
+                write_request_to_udp(&socket, from, &key, VERSION_VALUE).await?;
             }
             None => {
-                let request = Request {
-                    from,
-                    key: VERSION_KEY.to_owned(),
-                    value: state.get(&key).cloned(),
-                };
-                write_request_to_udp(&socket, &request).await?;
+                let Some(value) = state.get(&key) else { continue };
+                write_request_to_udp(&socket, from, &key, value).await?;
             }
         }
         
