@@ -6,7 +6,7 @@ use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use strict_lines_codec::StrictLinesCodec;
 use tokio::{net::TcpStream, select};
-use tokio_util::codec::{Framed, LinesCodec, FramedRead, FramedWrite};
+use tokio_util::codec::{Framed, FramedRead, FramedWrite, LinesCodec};
 
 lazy_static! {
     static ref REGEX_BOGUSCOIN: Regex = Regex::new(r"(?<= |^)7[a-zA-Z0-9]{25,34}(?= |$)").unwrap();
@@ -32,7 +32,8 @@ async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()>
                 match client_message {
                     Some(Ok(message)) => {
                         let message = hack_boguscoin_message(&message);
-                        println!("{}: {}", addr, message);
+                        #[cfg(debug_assertions)]
+                        println!("{addr} --> {message}");
                         server_framed.send(message).await?;
                     },
                     Some(Err(e)) => {
@@ -47,7 +48,8 @@ async fn handle_client(client_stream: TcpStream, addr: SocketAddr) -> Result<()>
             server_message = server_framed.next() => {
                 match server_message {
                     Some(Ok(message)) => {
-                        println!("{}: {}", addr, message);
+                        #[cfg(debug_assertions)]
+                        println!("{addr} <-- {message}");
                         client_framed.send(message).await?;
                     },
                     Some(Err(e)) => {
