@@ -70,10 +70,9 @@ impl Decoder for ClientToServerCodec {
             // I am dispatcher message
             0x81 => {
                 let mut roads = Vec::new();
-                let mut i = 1;
-                while i < src.len() {
-                    roads.push(BigEndian::read_u16(&src[i..i + 2]));
-                    i += 2;
+                let len = src[1];
+                for i in 0..len {
+                    roads.push(BigEndian::read_u16(&src[2 + i as usize * 2..4 + i as usize * 2]));
                 }
                 return Ok(Some(ClientToServerMessage::IAmDispatcher { roads }));
             }

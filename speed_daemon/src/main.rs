@@ -39,10 +39,13 @@ async fn main() {
                 if let Some(m) = msg {
                     match m {
                         Ok(msg) => match msg {
-                            codec::ClientToServerMessage::WantHeartbeat { interval } => {
+                            ClientToServerMessage::WantHeartbeat { interval } => {
                                 if interval != 0 {
                                     heartbeat(interval, sender.clone()).await;
                                 }
+                            }
+                            ClientToServerMessage::IAmDispatcher { roads } => {
+                                println!("IAmDispatcher: {:?}", roads);
                             }
                             _ => {}
                         },
