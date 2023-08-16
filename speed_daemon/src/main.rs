@@ -92,6 +92,7 @@ async fn handle(
                                         .count();
 
                                     if new_days == this_days.len() {
+                                        println!("TICKET plate {plate}, road {road}, speed {speed}");
                                         let existing_tickets =
                                             ticket_state.days.entry(plate.to_owned()).or_default();
                                         existing_tickets.extend(this_days.clone());
