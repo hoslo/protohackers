@@ -92,25 +92,41 @@ async fn handle(
                                         .count();
 
                                     if new_days == this_days.len() {
-                                        println!("TICKET plate {plate}, road {road}, speed {speed}");
+                                        println!(
+                                            "TICKET plate {plate}, road {road}, speed {speed}"
+                                        );
                                         let existing_tickets =
                                             ticket_state.days.entry(plate.to_owned()).or_default();
                                         existing_tickets.extend(this_days.clone());
-                                        let sender = ticket_state
-                                            .queues
-                                            .entry(road)
-                                            .or_insert_with(|| sender.clone());
-                                        sender
-                                            .send(Ticket {
-                                                plate: plate.to_owned(),
-                                                road,
-                                                mile1: prev.mile,
-                                                timestamp1: prev.timestamp,
-                                                mile2: next.mile,
-                                                timestamp2: next.timestamp,
-                                                speed: speed * 100,
-                                            })
-                                            .await?;
+                                        let sender = ticket_state.queues.get(&road);
+                                        match sender {
+                                            Some(sender) => {
+                                                sender
+                                                    .send(Ticket {
+                                                        plate: plate.to_owned(),
+                                                        road,
+                                                        mile1: prev.mile,
+                                                        timestamp1: prev.timestamp,
+                                                        mile2: next.mile,
+                                                        timestamp2: next.timestamp,
+                                                        speed: speed * 100,
+                                                    })
+                                                    .await.unwrap();
+                                            }
+                                            None => {
+                                                ticket_state.tickets.entry(road).or_default().push(
+                                                    Ticket {
+                                                        plate: plate.to_owned(),
+                                                        road,
+                                                        mile1: prev.mile,
+                                                        timestamp1: prev.timestamp,
+                                                        mile2: next.mile,
+                                                        timestamp2: next.timestamp,
+                                                        speed: speed * 100,
+                                                    },
+                                                );
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -179,6 +195,9 @@ async fn handle(
                             .queues
                             .entry(road)
                             .or_insert_with(|| sender.clone());
+                        for ticket in ticket_state.lock().await.tickets.entry(road).or_default().drain(..) {
+                            let _ = sender.send(ticket).await;
+                        }
                     }
                     let client_write = client_write.clone();
                     let receiver = receiver.clone();
@@ -229,6 +248,8 @@ struct Ticket {
 struct TicketState {
     // Road -> dispatcher channel
     queues: HashMap<u16, (Sender<Ticket>)>,
+
+    tickets: HashMap<u16, Vec<Ticket>>,
 
     // Plate -> Days with tickets
     days: HashMap<String, HashSet<u32>>,
