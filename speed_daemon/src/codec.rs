@@ -42,7 +42,9 @@ impl Decoder for ClientToServerCodec {
     type Error = anyhow::Error;
 
     fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        src.reserve(1);
+        if src.is_empty() {
+            return Ok(None);
+        }
         let t = src[0];
         match t {
             // plate message
@@ -54,7 +56,6 @@ impl Decoder for ClientToServerCodec {
             }
             // want heartbeat message
             0x40 => {
-                src.reserve(5);
                 let i = src.split_to(5);
                 let interval = BigEndian::read_u32(&i[1..]);
                 return Ok(Some(ClientToServerMessage::WantHeartbeat { interval }));
