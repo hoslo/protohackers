@@ -55,6 +55,8 @@ async fn handle(
                     let message = b"plate from Dispatcher";
                     let _ = c.write_u8(message.len() as u8).await;
                     let _ = c.write_all(message).await;
+                } else if identified == None {
+                    println!("PLATE FROM UNKNOWN 222222222");
                 } else {
                     let len = client_read.read_u8().await? as usize;
                     let mut buf = vec![0u8; len];
@@ -111,7 +113,8 @@ async fn handle(
                                                         timestamp2: next.timestamp,
                                                         speed: speed * 100,
                                                     })
-                                                    .await.unwrap();
+                                                    .await
+                                                    .unwrap();
                                             }
                                             None => {
                                                 ticket_state.tickets.entry(road).or_default().push(
@@ -195,7 +198,14 @@ async fn handle(
                             .queues
                             .entry(road)
                             .or_insert_with(|| sender.clone());
-                        for ticket in ticket_state.lock().await.tickets.entry(road).or_default().drain(..) {
+                        for ticket in ticket_state
+                            .lock()
+                            .await
+                            .tickets
+                            .entry(road)
+                            .or_default()
+                            .drain(..)
+                        {
                             let _ = sender.send(ticket).await;
                         }
                     }

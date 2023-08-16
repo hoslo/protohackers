@@ -12,4 +12,3 @@ tokio-util = {version = "0.7.8", features = ["codec"]}
 futures = "0.3.28"
 bytes = "1.4.0"
 byteorder = "1.4.3"
-async-channel = "1.9.0"
