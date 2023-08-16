@@ -18,7 +18,12 @@ async fn main() {
                 if let Some(m) = msg {
                     match m {
                         Ok(msg) => {
-                            println!("msg: {:?}", msg);
+                            match  msg {
+                                codec::ClientToServerMessage::WantHeartbeat { interval } => {
+                                    println!("WantHeartbeat: {}", interval);
+                                }
+                                _ => {}
+                            }   
                         }
                         Err(e) => {
                             println!("err: {:?}", e);
