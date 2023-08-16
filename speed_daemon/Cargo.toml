@@ -1,5 +1,5 @@
 [package]
-name = "mob_in_the_middle"
+name = "speed_daemon"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,9 +10,5 @@ tokio = { version = "1.31.0", features = ["full"] }
 anyhow = { version = "1.0.0", feature = ["backtrace"] }
 tokio-util = {version = "0.7.8", features = ["codec"]}
 futures = "0.3.28"
-fancy-regex = "0.11.0"
-lazy_static = "1.4.0"
 bytes = "1.4.0"
-
-[dev-dependencies]
-mob_in_the_middle = { path = "." }
+byteorder = "1.4.3"
