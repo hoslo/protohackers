@@ -9,24 +9,22 @@ mod codec;
 async fn main() {
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     loop {
-
-        let (stream, _) = listener.accept().await.unwrap();
+        let (mut stream, _) = listener.accept().await.unwrap();
         tokio::spawn(async move {
-            let mut framed = FramedRead::new(stream, ClientToServerCodec);
+            let (reader, _writer) = stream.split();
+            let mut framed = FramedRead::new(reader, ClientToServerCodec);
             loop {
                 let msg = framed.next().await;
                 if let Some(m) = msg {
                     match m {
-                        Ok(msg) => {
-                            match  msg {
-                                codec::ClientToServerMessage::WantHeartbeat { interval } => {
-                                    if interval != 0 {
-                                        println!("WantHeartbeat: {}", interval);
-                                    }
+                        Ok(msg) => match msg {
+                            codec::ClientToServerMessage::WantHeartbeat { interval } => {
+                                if interval != 0 {
+                                    println!("WantHeartbeat: {}", interval);
                                 }
-                                _ => {}
-                            }   
-                        }
+                            }
+                            _ => {}
+                        },
                         Err(e) => {
                             println!("err: {:?}", e);
                         }
