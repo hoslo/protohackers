@@ -52,7 +52,6 @@ impl Decoder for ClientToServerCodec {
             }
             // want heartbeat message
             0x40 => {
-                println!("want heartbeat message: {:?}", src.clone());
                 let interval = BigEndian::read_u32(&src[1..5]);
                 return Ok(Some(ClientToServerMessage::WantHeartbeat { interval }));
             }
