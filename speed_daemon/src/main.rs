@@ -20,7 +20,9 @@ async fn main() {
                         Ok(msg) => {
                             match  msg {
                                 codec::ClientToServerMessage::WantHeartbeat { interval } => {
-                                    println!("WantHeartbeat: {}", interval);
+                                    if interval != 0 {
+                                        println!("WantHeartbeat: {}", interval);
+                                    }
                                 }
                                 _ => {}
                             }   
