@@ -1,10 +1,10 @@
 use anyhow::Result;
-use async_channel::{unbounded, Receiver, Sender};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc::{self, Sender};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
@@ -40,6 +40,8 @@ async fn handle(
 
     let (mut client_read, client_write) = stream.into_split();
     let client_write = Arc::new(Mutex::new(client_write));
+    let (sender, receiver) = mpsc::channel(32);
+    let receiver = Arc::new(Mutex::new(receiver));
     loop {
         let id = client_read.read_u8().await?;
         match id {
@@ -96,9 +98,7 @@ async fn handle(
                                         let sender = ticket_state
                                             .queues
                                             .entry(road)
-                                            .or_insert_with(|| unbounded())
-                                            .0
-                                            .clone();
+                                            .or_insert_with(|| sender.clone());
                                         sender
                                             .send(Ticket {
                                                 plate: plate.to_owned(),
@@ -172,34 +172,33 @@ async fn handle(
                     }
                     println!("I_AM_DISPATCHER {roads:?}");
                     for road in roads {
-                        let receiver = ticket_state
+                        ticket_state
                             .lock()
                             .await
                             .queues
                             .entry(road)
-                            .or_insert_with(|| unbounded())
-                            .1
-                            .clone();
-                        let client_write = client_write.clone();
-                        tokio::spawn({
-                            async move {
-                                loop {
-                                    let ticket = receiver.recv().await.unwrap();
-                                    println!("will send ticket: {ticket:?}");
-                                    let mut c = client_write.lock().await;
-                                    let _ = c.write_u8(TICKET).await;
-                                    let _ = c.write_u8(ticket.plate.len() as u8).await;
-                                    let _ = c.write_all(ticket.plate.as_bytes()).await;
-                                    let _ = c.write_u16(ticket.road).await;
-                                    let _ = c.write_u16(ticket.mile1).await;
-                                    let _ = c.write_u32(ticket.timestamp1).await;
-                                    let _ = c.write_u16(ticket.mile2).await;
-                                    let _ = c.write_u32(ticket.timestamp2).await;
-                                    let _ = c.write_u16(ticket.speed).await;
-                                }
-                            }
-                        });
+                            .or_insert_with(|| sender.clone());
                     }
+                    let client_write = client_write.clone();
+                    let receiver = receiver.clone();
+                    tokio::spawn({
+                        async move {
+                            loop {
+                                let ticket = receiver.lock().await.recv().await.unwrap();
+                                println!("will send ticket: {ticket:?}");
+                                let mut c = client_write.lock().await;
+                                let _ = c.write_u8(TICKET).await;
+                                let _ = c.write_u8(ticket.plate.len() as u8).await;
+                                let _ = c.write_all(ticket.plate.as_bytes()).await;
+                                let _ = c.write_u16(ticket.road).await;
+                                let _ = c.write_u16(ticket.mile1).await;
+                                let _ = c.write_u32(ticket.timestamp1).await;
+                                let _ = c.write_u16(ticket.mile2).await;
+                                let _ = c.write_u32(ticket.timestamp2).await;
+                                let _ = c.write_u16(ticket.speed).await;
+                            }
+                        }
+                    });
                 }
             }
             other => {
@@ -228,7 +227,7 @@ struct Ticket {
 #[derive(Debug, Default)]
 struct TicketState {
     // Road -> dispatcher channel
-    queues: HashMap<u16, (Sender<Ticket>, Receiver<Ticket>)>,
+    queues: HashMap<u16, (Sender<Ticket>)>,
 
     // Plate -> Days with tickets
     days: HashMap<String, HashSet<u32>>,
