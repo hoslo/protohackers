@@ -1,6 +1,7 @@
 use std::io;
 
 use byteorder::{BigEndian, ByteOrder};
+use bytes::Buf;
 use tokio_util::codec::{Decoder, Encoder};
 
 #[derive(Debug)]
@@ -41,6 +42,7 @@ impl Decoder for ClientToServerCodec {
     type Error = anyhow::Error;
 
     fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        println!("decode: {:?}", src);
         let t = src[0];
         match t {
             // plate message
