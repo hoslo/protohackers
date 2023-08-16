@@ -1,13 +1,16 @@
 use codec::{ClientToServerCodec, ClientToServerMessage, ServerToClientMessage};
-use futures::{StreamExt, SinkExt};
-use tokio::{net::TcpListener, io::AsyncReadExt, sync::mpsc::Sender};
+use futures::{SinkExt, StreamExt};
+use tokio::{io::AsyncReadExt, net::TcpListener, sync::mpsc::Sender};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 mod codec;
 
 async fn heartbeat(interval: u32, sender: Sender<ServerToClientMessage>) {
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(
+        interval as u64 * 100,
+    ));
     loop {
-        tokio::time::sleep(tokio::time::Duration::from_millis(interval as u64 * 1000 /10)).await;
+        interval.tick().await;
         sender.send(ServerToClientMessage::Heartbeat).await.unwrap();
     }
 }
@@ -27,7 +30,10 @@ async fn main() {
                     match msg {
                         ServerToClientMessage::Heartbeat => {
                             println!("send heartbeat");
-                            framed_write.send(ServerToClientMessage::Heartbeat).await.unwrap();
+                            framed_write
+                                .send(ServerToClientMessage::Heartbeat)
+                                .await
+                                .unwrap();
                         }
                         _ => {}
                     }

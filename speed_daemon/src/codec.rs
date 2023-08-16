@@ -65,6 +65,7 @@ impl Decoder for ClientToServerCodec {
                 let road = BigEndian::read_u16(&src[1..3]);
                 let mile = BigEndian::read_u16(&src[3..5]);
                 let limit = BigEndian::read_u16(&src[5..7]);
+                println!("road: {}, mile: {}, limit: {}", road, mile, limit);
                 return Ok(Some(ClientToServerMessage::IAmCamera { road, mile, limit }));
             }
             // I am dispatcher message
